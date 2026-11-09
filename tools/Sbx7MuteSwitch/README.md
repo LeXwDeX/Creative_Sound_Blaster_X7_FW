@@ -31,6 +31,18 @@ dotnet build -c Release -p:InteropCtSndCrPath="C:\...\Interop.CtSndCr.dll"
 
 The output is `bin\Release\net472\Sbx7MuteSwitch.exe` (32-bit).
 
+## Windows quick test (no build)
+
+A packaged folder is produced as `artifacts/Sbx7MuteSwitch-win-x86.zip` on the
+analysis machine (build artifact, not committed). Unzip it on Windows and
+double-click, in order:
+
+1. `probe.bat` — read-only; confirms the device and mute parameter are reachable.
+2. `test-direct-off.bat` — low volume; mute 1 s, Direct Mode OFF, wait 1 s, restore.
+3. `test-sbxmaster-off.bat` — the same sequence for SBX Master.
+
+Each script pauses at the end, so the result stays visible.
+
 ## First: probe only
 
 Do not start with a mode switch. Bind and read the current mute value first:
