@@ -2,7 +2,8 @@
 slug: soundcard-firmware
 title: Sound Blaster X7 (SBX7) 固件/驱动分析：模式切换爆音
 created: 2026-11-09
-status: recon
+repository: git@github.com:LeXwDeX/Creative_Sound_Blaster_X7_FW.git
+status: verifying
 mode: deep
 target_type: firmware
 authorization: 用户自有 SBX7 设备与厂商下载文件；仅静态分析，不执行、不安装、不刷写
@@ -94,3 +95,4 @@ authorization: 用户自有 SBX7 设备与厂商下载文件；仅静态分析�
 |---|---|---|---|
 | 2026-11-09 | planning | 项目创建 | 初始受理 |
 | 2026-11-09 | recon | 确认两个文件身份与哈希 | 开始静态侦察 |
+| 2026-11-09 | verifying | 完成固件/驱动静态分析，工具编译通过 | 等待 Windows 真机验证静音工具 |

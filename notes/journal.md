@@ -21,6 +21,13 @@
 
 <!-- 从这里开始追加。每条记录一行或一个列表项，不要修改已有条目。 -->
 
+- 2026-11-09 14:54 | 受理与身份 | `file`、`shasum -a 256` | 驱动包 119 MB InstallShield；PCFW 4.2 MB PE32；哈希已记录 | `PROJECT.md` | 下一步：解包 PCFW
+- 2026-11-09 14:57 | PCFW 资源 | `7zz l -slt`、`7zz x`、`binwalk` | 发现 BC08（CSR DFU）、PIC32（Intel HEX）、MALCOLM_SBX（U1 2020/03/12）、GILROY | `artifacts/pcfw/` | 下一步：映射 SBX7 资源
+- 2026-11-09 14:59 | 驱动包 | `tail -c`、`7zz x`、MSI 解包 | 465 个文件；`Sound Blaster X7.msi`、控制面板、驱动；`SndCrUSB.DLL` 为 `KsMalcCtl.DLL` COM | `artifacts/driver/` | 下一步：反编译控制面板
+- 2026-11-09 15:02 | 控制面板反编译 | `ilspycmd` + `grep` | Direct Mode / SBX Master 处理器直接 SetParam，无 mute/延时；发现 `eParamSpeakerCalibrator_Mute=26` | `artifacts/decompiled/` | 下一步：写静音包装工具
+- 2026-11-09 15:05 | 验证工具 | `dotnet build` | `tools/Sbx7MuteSwitch` 用厂商 `Interop.CtSndCr.dll` 编译通过（0 warnings / 0 errors） | `tools/Sbx7MuteSwitch/` | 下一步：Windows 真机低音量测试
+- 2026-11-09 15:06 | 交付 | 写 `report.md`、更新 plan/unknowns、提交并推送 | 报告与工具进入 `Creative_Sound_Blaster_X7_FW` 仓库 | `report.md` | 等待 Windows 侧测试结果
+
 ## 规则
 
 - 每轮结束前写一条，不要事后补写模糊记录。

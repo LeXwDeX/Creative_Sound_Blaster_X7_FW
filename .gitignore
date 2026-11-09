@@ -13,6 +13,9 @@ rebuild/**/dist/
 rebuild/**/.venv/
 rebuild/**/.craft-anything/
 
+tools/**/bin/
+tools/**/obj/
+
 *.log
 .DS_Store
 # Vendor binaries and firmware images are never committed.
