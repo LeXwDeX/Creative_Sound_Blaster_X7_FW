@@ -57,6 +57,22 @@
   - 为什么未知：两套资源大小与哈希不同；结论必须按构建标注
   - 下一步探针：分别分析两套 MALCOLM/GILROY/PIC32/BC08，比较版本串与代码差异
   - 证据：`artifacts/workflow/updatefw/.rsrc/RCDATA`
+- [ ] U011 电视数字音频输出能否固定为 PCM 或 Dolby Digital
+  - 为什么未知：用户电视菜单选项未确认
+  - 下一步探针：Apple TV 音频格式改 Stereo/PCM + 电视数字音频输出改 PCM，然后 NS → Apple TV 复测
+  - 证据：用户描述；`report.md` 第 14 节
+- [ ] U014 两个源都 PCM 时是否仍爆
+  - 为什么未知：电视切 HDMI 可能短暂断开/重锁光纤，即使都是 PCM
+  - 下一步探针：NS 与 Apple TV 都设 PCM，重复 HDMI 切换
+  - 证据：`report.md` 第 14 节
+- [ ] U012 官方 2020 固件是否修复 SPDIF PCM↔Dolby 切换爆音
+  - 为什么未知：未对比 2020/2015 MALCOLM 的 SPDIF 切换处理，也未在真机上升级验证
+  - 下一步探针：对比两套 MALCOLM 的 8051/DSP 差异；确认设备当前版本后再考虑官方升级
+  - 证据：`artifacts/pcfw/.rsrc/RCDATA/MALCOLM_SBX_RCDATA`、`artifacts/workflow/updatefw/.rsrc/RCDATA/`
+- [ ] U013 自定义固件补静音的可行性与恢复路径
+  - 为什么未知：8051/DSP 代码、校验/签名与刷写恢复路径未验证
+  - 下一步探针：先完成 8051/SCP 反汇编；没有恢复方案前不刷写
+  - 证据：`report.md` 第 13、14 节
 
 ## 已解决
 

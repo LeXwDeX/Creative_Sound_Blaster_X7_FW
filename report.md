@@ -179,3 +179,23 @@ ilspycmd -p -o artifacts/decompiled/Interop ".../Interop.CtSndCr.dll"
 2. 低音量 A/B：不静音 / 设备静音 / Windows 端点静音 三种条件，分别切 `direct`、`stereo-direct`、`spdif-passthrough`、`sbxmaster`；记录爆音在切换沿还是恢复沿。
 3. 用 USBPcap/HID ETW 抓模式切换与静音报告，确认 `26 01 96 3A 92` 是否出现、切换后 mute 是否被复位。
 4. 静态并行：用 8051 反汇编 MALCOLM 0x4B96E 起代码，搜索 SCP 0x26/0x963A 与 fade/mute 状态机。
+
+## 14. 电视光纤场景（实际使用方式，2026-11-09 修正）
+
+- 实际链路：**电视光纤输出 → X7 光纤输入 → X7 输出到音箱/耳机**；X7 独立供电，不接 PC。
+- 爆音触发（用户实测）：**切换电视 HDMI 输入**，例如 Nintendo Switch（PCM）→ Apple TV（Dolby）；电视光纤输出格式随之从 PCM 变成 Dolby，X7 内部 SPDIF 接收/解码器重配置，爆一下。该场景没有 Windows 驱动/控制面板参与。
+- 最先做的非固件测试：让两个 HDMI 源都输出 PCM——Apple TV 设置 → 视频和音频 → 音频格式 → 立体声/PCM；电视数字音频输出设为 PCM。然后 NS → Apple TV 再切一次。若爆音消失，问题即解决（代价是 Apple TV 杜比环绕变双声道）。
+- 若两个源都 PCM 仍爆：说明电视切 HDMI 时光纤信号本身会断开/重锁，或 X7 输入切换有瞬态；此时才需要固件静音或外部静音。
+- 若必须保留 Apple TV 杜比：先看电视能否固定输出 Dolby（把 NS 的 PCM 也转成 Dolby）；不能固定时，X7 固件补 1 秒静音是唯一路径，但风险高。
+- 因此 `Sbx7MuteSwitch` **不适用于电视光纤场景**；保留它只用于 Windows USB 连接时的诊断实验，不作为本问题的修复方案。
+- 安全的非固件方案（优先验证）：
+  1. 电视数字音频输出固定 **PCM**：牺牲 Dolby 多声道，但不再发生 PCM↔Dolby 切换。
+  2. 电视支持时固定输出 **Dolby Digital**（把 PCM 也转成 Dolby）：不再切换，但取决于电视是否支持转码。
+  3. 改用模拟/蓝牙输入，避开 Dolby 码流切换。
+- 固件方案：
+  - 先确认电视菜单能否固定输出；能固定就不需要改固件。
+  - 对比 2015 与 2020 两套 MALCOLM 固件，检查 2020 是否在 SPDIF 切换处增加 mute/fade；若官方已修，优先官方升级（需 Windows + USB，先确认设备当前版本与恢复路径）。
+  - 自定义固件补 1 秒静音是最后手段：8051/DSP 代码、校验/签名与恢复路径未知，存在变砖风险，不推荐直接刷写。
+- 待确认：
+  - 电视数字音频输出菜单是否有 `PCM` / `Dolby Digital` / `自动` 三个选项。
+  - 爆音是否**只在** PCM↔Dolby 切换时出现；固定其中一种后是否完全消失。

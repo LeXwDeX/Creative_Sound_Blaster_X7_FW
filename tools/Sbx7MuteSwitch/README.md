@@ -7,6 +7,11 @@ then restores the previous mute state.
 
 It does **not** modify firmware, install a driver or flash the device.
 
+> **Not for the TV optical-only setup.** If the X7 is powered independently and
+> fed by a TV's optical output, there is no Windows driver/control panel in the
+> path; this tool cannot help. See `report.md` section 14 for the TV-side PCM /
+> Dolby fixed-output tests and the firmware caveats.
+
 ## Requirements
 
 - Windows with the Sound Blaster X7 driver and control panel installed.

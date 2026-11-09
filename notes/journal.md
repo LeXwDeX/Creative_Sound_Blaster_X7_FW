@@ -29,6 +29,7 @@
 - 2026-11-09 15:06 | 交付 | 写 `report.md`、更新 plan/unknowns、提交并推送 | 报告与工具进入 `Creative_Sound_Blaster_X7_FW` 仓库 | `report.md` | 等待 Windows 侧测试结果
 - 2026-11-09 15:44 | 深度静态分析 | 4 路并行 workflow + 核查 | 确认 MALCOLM/PIC32/BC08/GILROY 结构与 2020/2015 差异；升级器 U1 资源选择与 65B HID 报文；控制面板 COM/HID 链；发现 feature 值错误与工具 CLSID/BindHardware 阻塞 | `report.md` 第 13 节；`artifacts/workflow/` | 下一步：修正工具并 Windows probe
 - 2026-11-09 15:50 | 工具修正 | `dotnet build` | 改为 U1 CLSID 495E4C24（回退 7BFF1F7F）、`BindHardware(endpointId)`、NAudio 端点发现、`--probe`；编译 0/0 | `tools/Sbx7MuteSwitch/` | 下一步：Windows `--probe` 与低音量 A/B
+- 2026-11-09 16:20 | 场景修正 | 用户确认 | 爆音在电视 HDMI 输入切换时发生（NS PCM → Apple TV Dolby），X7 光纤解码器随之切换；Windows 工具不适用 | `report.md` 第 14 节 | 下一步：Apple TV/TV 固定 PCM 复测
 
 ## 规则
 
