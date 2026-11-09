@@ -19,7 +19,8 @@ evidence/raw/E001-<subject>.<ext>  原始输出、页面、响应或日志
 
 | ID | 时间 | 目标 | 工具或命令 | 输入 SHA-256 | 输出 | 覆盖 | 限制 | 类别 |
 |---|---|---|---|---|---|---|---|---|
-|  |  |  |  |  |  |  |  |  |
+| E8051-01 | 2026-11-09 | `SBX7_PCFW_EN_200321.exe` 资源 `MALCOLM_SBX_RCDATA` | 提取（file[0x4B000:]）+ Ghidra 12.2 headless（8051:BE:16:default）+ 手工解码 | `f0f4fb575b6047adfd063e6fa6947549334b436e1935c43898bb16c2d7cf7821`（源）/ `c9c96e9fca7fbe472fe34917b8d7582478ee429012ed345ffdfe5fc5e7414025`（镜像） | `E8051-01-8051-extract-and-analysis.md`、`artifacts/8051_image.bin`、`artifacts/ghidra_8051_export/` | 8051 镜像布局、主命令循环、PCM↔Dolby 切换状态机（0x17AD-0x189E）、2015/2020 同构对比 | bank 函数缺失（AJMP 0x1C63 越界）；0x1EDA 硬件语义未验证 | observation/derivation |
+| E8051-02 | 2026-11-09 | 同上（8051 镜像）+ 2015 版 MALCOLM | XRAM 位级写入扫描 + 版本对齐 diff | 同上 | `E8051-02-dsp-protocol.md` | 8051→SB-Axx1 配置协议三层路径（FCE4/8EC3 参数族、0x1A5/0x1A6 寄存器直写）；param 2 全值域；2015→2020 唯一差异 = (2,0x1F) | 参数寄存器语义未知（GILROY/缺失 bank）；无运行时验证 | observation/derivation |
 
 索引可以放在本文件，也可以放在 `notes/journal.md`；但每条 Evidence 必须能从这里或 journal 找到。
 
