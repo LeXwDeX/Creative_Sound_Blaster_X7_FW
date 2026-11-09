@@ -30,6 +30,7 @@
 - 2026-11-09 15:44 | 深度静态分析 | 4 路并行 workflow + 核查 | 确认 MALCOLM/PIC32/BC08/GILROY 结构与 2020/2015 差异；升级器 U1 资源选择与 65B HID 报文；控制面板 COM/HID 链；发现 feature 值错误与工具 CLSID/BindHardware 阻塞 | `report.md` 第 13 节；`artifacts/workflow/` | 下一步：修正工具并 Windows probe
 - 2026-11-09 15:50 | 工具修正 | `dotnet build` | 改为 U1 CLSID 495E4C24（回退 7BFF1F7F）、`BindHardware(endpointId)`、NAudio 端点发现、`--probe`；编译 0/0 | `tools/Sbx7MuteSwitch/` | 下一步：Windows `--probe` 与低音量 A/B
 - 2026-11-09 16:20 | 场景修正 | 用户确认 | 爆音在电视 HDMI 输入切换时发生（NS PCM → Apple TV Dolby），X7 光纤解码器随之切换；Windows 工具不适用 | `report.md` 第 14 节 | 下一步：Apple TV/TV 固定 PCM 复测
+- 2026-11-09 16:28 | 原始文件归档 | `ls`/`shasum -a 256` | 用户把两个原始文件放入 `source/`；哈希与之前一致；`source/` 已加入 `.gitignore` | `source/` | 下一步：用 `source/` 作为项目输入路径
 
 ## 规则
 

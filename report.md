@@ -1,21 +1,23 @@
 # 报告：Sound Blaster X7 (SBX7) 固件/驱动分析
 
 > 项目：`projects/soundcard-firmware/` · 创建：2026-11-09 · 状态：verifying
-> 目标：`SBX7_PCDRV_L9_1_02_03.exe`、`SBX7_PCFW_EN_200321.exe` · 模式：`deep`（静态）
+> 目标：`source/SBX7_PCDRV_L9_1_02_03.exe`、`source/SBX7_PCFW_EN_200321.exe` · 模式：`deep`（静态）
 > 授权：用户自有设备与 Creative 官方下载文件；未执行安装器、未连接/刷写设备。
 
 ## 1. 目标与授权
 
 | 文件 | 大小 | SHA-256 | 格式 |
 |---|---:|---|---|
-| `SBX7_PCDRV_L9_1_02_03.exe` | 119 MB | `5f911460fb028b806be49b0d3576fad67fedada74f393ec5145d1f63191e0de3` | PE32 InstallShield 自解压 |
-| `SBX7_PCFW_EN_200321.exe` | 4.2 MB | `32795a5b06b99504b40429a65a20c415fc305269225b7b2b3426aa23bb993e6d` | PE32 GUI，SBHIDFlash.EXE |
+| `source/SBX7_PCDRV_L9_1_02_03.exe` | 119 MB | `5f911460fb028b806be49b0d3576fad67fedada74f393ec5145d1f63191e0de3` | PE32 InstallShield 自解压 |
+| `source/SBX7_PCFW_EN_200321.exe` | 4.2 MB | `32795a5b06b99504b40429a65a20c415fc305269225b7b2b3426aa23bb993e6d` | PE32 GUI，SBHIDFlash.EXE |
+
+原始文件位于 `source/`，已在 `.gitignore` 中排除，不提交。
 
 范围外：运行安装器/升级器、安装驱动、连接或刷写设备、漏洞利用、修改厂商签名。
 
 ## 2. 结论摘要
 
-- `SBX7_PCFW_EN_200321.exe` 是 **Creative Device HID Firmware Upgrade Application**（`SBHIDFlash.EXE`，产品版本 `1.2.200321.170904`），通过 HID 与设备通信，内含 U1、Malcolm、Gilroy、PIC32、CSR Bluetooth 等升级类。
+- `source/SBX7_PCFW_EN_200321.exe` 是 **Creative Device HID Firmware Upgrade Application**（`SBHIDFlash.EXE`，产品版本 `1.2.200321.170904`），通过 HID 与设备通信，内含 U1、Malcolm、Gilroy、PIC32、CSR Bluetooth 等升级类。
 - 固件资源在 PE 的 `.rsrc/RCDATA` 中。`MALCOLM_SBX_RCDATA`（314,457 字节）含 `Copyright (c) 2011 Creative Labs, Inc. ... U1 2020/03/12-22:23:55`，是与 SBX7/U1 最匹配的主固件候选。
 - `BC08_RCDATA` 以 `CSR-dfu2` / `ADK3.0 DFU` 开头，是 CSR 蓝牙 DFU 固件；`PIC32_RCDATA` 是 PIC32 的 Intel HEX；`GILROY_RCDATA` 为高熵二进制，未见明文。
 - 驱动包是 InstallShield，内含 `Sound Blaster X7.msi`、控制面板与驱动；控制面板 `SBX7.exe` 是 .NET，`SndCrUSB.DLL` 实际为 `KsMalcCtl.DLL` COM 服务，`Interop.CtSndCr.dll` 是 P/Invoke 包装。
@@ -27,7 +29,7 @@
 
 ## 3. 固件包结构
 
-`SBX7_PCFW_EN_200321.exe` 的 `.rsrc`：
+`source/SBX7_PCFW_EN_200321.exe` 的 `.rsrc`：
 
 | 资源 | 大小 | SHA-256 前缀 | 观察 |
 |---|---:|---|---|
@@ -95,19 +97,19 @@
 ## 10. 输入哈希与复现
 
 ```text
-5f911460fb028b806be49b0d3576fad67fedada74f393ec5145d1f63191e0de3  SBX7_PCDRV_L9_1_02_03.exe
-32795a5b06b99504b40429a65a20c415fc305269225b7b2b3426aa23bb993e6d  SBX7_PCFW_EN_200321.exe
+5f911460fb028b806be49b0d3576fad67fedada74f393ec5145d1f63191e0de3  source/SBX7_PCDRV_L9_1_02_03.exe
+32795a5b06b99504b40429a65a20c415fc305269225b7b2b3426aa23bb993e6d  source/SBX7_PCFW_EN_200321.exe
 ```
 
 复现（只读）：
 
 ```bash
 # 固件包资源
-7zz l SBX7_PCFW_EN_200321.exe
-7zz x -oartifacts/pcfw SBX7_PCFW_EN_200321.exe
+7zz l source/SBX7_PCFW_EN_200321.exe
+7zz x -oartifacts/pcfw source/SBX7_PCFW_EN_200321.exe
 
 # 驱动包
-tail -c +98324 SBX7_PCDRV_L9_1_02_03.exe > artifacts/driver/driver.cab
+tail -c +98324 source/SBX7_PCDRV_L9_1_02_03.exe > artifacts/driver/driver.cab
 7zz x -oartifacts/driver/files artifacts/driver/driver.cab
 
 # 控制面板反编译（ILSpy）

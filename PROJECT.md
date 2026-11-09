@@ -17,8 +17,8 @@ authorization: 用户自有 SBX7 设备与厂商下载文件；仅静态分析�
 ## 1. 目标
 
 - 目标物：
-  - `SBX7_PCDRV_L9_1_02_03.exe`（驱动/控制面板安装包）
-  - `SBX7_PCFW_EN_200321.exe`（疑似固件升级器）
+  - `source/SBX7_PCDRV_L9_1_02_03.exe`（驱动/控制面板安装包）
+  - `source/SBX7_PCFW_EN_200321.exe`（疑似固件升级器）
 - 用户问题：哪个文件包含固件；固件如何升级；为什么从 SB（Sound Blaster / Dolby 处理）切到普通模式时会出现巨大爆音；能否在两种模式切换时插入约 1 秒静默。
 - 交付物：解释 + 报告 + Evidence + 可安全验证的下一步实验建议。
 - 成功标准：确认固件容器与更新路径；定位与模式切换、静音、音量、DSP 相关的字符串/代码或命令；给出有证据的根因假设和安全测试方案。
@@ -28,7 +28,7 @@ authorization: 用户自有 SBX7 设备与厂商下载文件；仅静态分析�
 | 项 | 值 |
 |---|---|
 | 类型 | 固件 + Windows 驱动/控制面板 |
-| 文件 | `SBX7_PCDRV_L9_1_02_03.exe`、`SBX7_PCFW_EN_200321.exe` |
+| 文件 | `source/SBX7_PCDRV_L9_1_02_03.exe`、`source/SBX7_PCFW_EN_200321.exe` |
 | 大小 | 119 MB、4.2 MB |
 | SHA-256 | `5f911460fb028b806be49b0d3576fad67fedada74f393ec5145d1f63191e0de3`、`32795a5b06b99504b40429a65a20c415fc305269225b7b2b3426aa23bb993e6d` |
 | 格式 | 前者 PE32 InstallShield 自解压；后者 PE32 GUI（含 `CFirmwareUpgrade*`、`CxAudioHidDev*`） |
@@ -77,7 +77,7 @@ authorization: 用户自有 SBX7 设备与厂商下载文件；仅静态分析�
 
 ## 7. 范围外
 
-- 不运行 `SBX7_PCDRV_L9_1_02_03.exe` 或 `SBX7_PCFW_EN_200321.exe`。
+- 不运行 `source/SBX7_PCDRV_L9_1_02_03.exe` 或 `source/SBX7_PCFW_EN_200321.exe`。
 - 不安装驱动、不连接设备、不刷写固件。
 - 不做漏洞利用、绕过签名或修改厂商固件。
 - 不分析其他设备或账号。

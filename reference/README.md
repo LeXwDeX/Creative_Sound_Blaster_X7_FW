@@ -2,6 +2,8 @@
 
 > 项目：`projects/soundcard-firmware/` · 更新：2026-11-09
 > 本目录保存用户提供的样本、截图、路径与授权依据。只读，不修改原件。
+>
+> 本项目的原始厂商文件放在 `source/`（`SBX7_PCDRV_L9_1_02_03.exe`、`SBX7_PCFW_EN_200321.exe`），已在 `.gitignore` 中排除；`reference/` 保留给额外截图、说明与授权材料。
 
 ## 放什么
 

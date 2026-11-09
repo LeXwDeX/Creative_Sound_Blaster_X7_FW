@@ -5,6 +5,7 @@ reference/*
 !reference/README.md
 artifacts/
 .state/
+source/
 
 # Build outputs inside a rebuilt project.
 rebuild/**/target/
