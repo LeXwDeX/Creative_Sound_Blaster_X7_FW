@@ -52,3 +52,4 @@ evidence/raw/E001-<subject>.<ext>  原始输出、页面、响应或日志
 ## git
 
 `.gitignore` 默认排除 `evidence/*`，只保留本文件。不要用 `git add -f` 提交 Evidence 或原始输出。
+| E8051-03 | 2026-11-09 | PCFW.exe x86 + PIC32 flat + GILROY/BC08 数据 | Ghidra 12.2（x86：Gilroy 升级函数定位）+ 手工分析 | 见 E8051-03 内引用 | `E8051-03-gilroy-static-exhausted.md` | GILROY 静态解密途径全排除（PC=memcpy、PIC32 无引用、无压缩头）；升级协议 0x3E 08/09/0A | 反编译器不可用（ARM mac），仅反汇编 | observation/derivation |
