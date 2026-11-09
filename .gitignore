@@ -1,0 +1,29 @@
+# Target data and generated artifacts stay out of git.
+evidence/*
+!evidence/README.md
+reference/*
+!reference/README.md
+artifacts/
+.state/
+
+# Build outputs inside a rebuilt project.
+rebuild/**/target/
+rebuild/**/node_modules/
+rebuild/**/dist/
+rebuild/**/.venv/
+rebuild/**/.craft-anything/
+
+*.log
+.DS_Store
+# Vendor binaries and firmware images are never committed.
+*.exe
+*.dll
+*.sys
+*.bin
+*.hex
+*.img
+*.rom
+*.cab
+*.msi
+*.pdb
+*.zip
