@@ -23,7 +23,7 @@
   - `ckboxDirectMode_Click` → `MalCtrl.SetParamInt(MalcolmControlID.SpkDirectMode, 1/0)`
   - `btnSBXMaster_Click` → `SetParamBool(MalcolmControlID.SBXMasterOnOff, ...)`
   - `btnVolMute_Click` 调的是 **Windows 播放静音**（`CTAudLib.SetWindowsPlaybackMute`），不是设备输出静音。
-- 设备侧存在独立静音参数：`eFeature_Effects_SpeakerCalibrator`（`0x10000080`）+ `eParamSpeakerCalibrator_Mute = 26`。可以尝试在模式切换前后调用它，制造约 1 秒静默。
+- 设备侧存在独立静音参数：`eFeature_Effects_SpeakerCalibrator`（`0x10000100`）+ `eParamSpeakerCalibrator_Mute = 26`。`0x10000080` 是 `SpeakerEnhancement`，不是 SpeakerCalibrator。可以尝试在模式切换前后调用它，制造约 1 秒静默。
 
 ## 3. 固件包结构
 
@@ -46,7 +46,7 @@
 
 | 动作 | Feature | Param |
 |---|---|---|
-| 设备静音 | `eFeature_Effects_SpeakerCalibrator` = `0x10000080` | `eParamSpeakerCalibrator_Mute` = 26 |
+| 设备静音 | `eFeature_Effects_SpeakerCalibrator` = `0x10000100` | `eParamSpeakerCalibrator_Mute` = 26 |
 | Direct Mode | `eFeature_System_ProcessingControl` = `0x01000002` | `eParamProcessingControl_DirectMode` = 7 |
 | Stereo Direct Mode | `eFeature_System_ProcessingControl` = `0x01000002` | `eParamProcessingControl_StereoDirectMode` = 8 |
 | SBX Master | `eFeature_EfxMasterControl` = `0x60000001` | `eParamEfxMasterControl_SBXMasterOnOff` = 7 |
@@ -87,7 +87,7 @@
 - `U001`：`MALCOLM_SBX_RCDATA` 是否就是 SBX7 当前主固件；需要升级器代码的资源选择逻辑或设备版本字符串确认。
 - `U002`：`eParamSpeakerCalibrator_Mute` 的静音点是否在爆音源之前；需要 Windows 真机实验。
 - `U003`：用户所说的“SB → 普通”具体对应 Direct Mode、Stereo Direct Mode、SBX Master 还是 Dolby 解码开关；需要在控制面板上确认。
-- `U004`：固件是否已有模式切换静音/渐变；需要分析 `MALCOLM_SBX_RCDATA` 或抓取 HID 命令。
+- `U004`：固件是否已有模式切换静音/渐变；已完成 MALCOLM 的头部/浮点表/8051 尾部结构识别，但尚未反汇编到 SCP 0x963A 或 fade/mute 状态机。
 - `U005`：`GILROY_RCDATA` 与 `MALCOLM_SBX_RCDATA` 的设备映射；升级器支持多个 MCU/产品。
 - 未执行任何安装器/固件升级器；未连接设备；未验证签名/信任链。
 - 本机是 macOS，无法运行 Windows COM 工具或真实设备测试。
@@ -131,3 +131,51 @@ ilspycmd -p -o artifacts/decompiled/Interop ".../Interop.CtSndCr.dll"
 | E003 | 控制面板 Direct/SBX/静音处理器反编译 | observation + derivation | `artifacts/decompiled/`（本地） |
 | E004 | COM 参数枚举与结构体 | derivation | `artifacts/decompiled/Interop/`（本地） |
 | E005 | `Sbx7MuteSwitch` 编译通过 | observation | `tools/Sbx7MuteSwitch/` |
+| E006 | 升级器 CFirmwareUpgradeU1 / HID 报文 / 资源选择 | derivation | `artifacts/workflow/`、PCFW 反汇编 |
+| E007 | MALCOLM / PIC32 / BC08 / GILROY 容器与架构识别 | derivation | `artifacts/pcfw/.rsrc/RCDATA` |
+| E008 | SndCrUSB → CTHIDRpA → CTHID → HID 链路与参数表 | observation + inferred | `artifacts/decompiled/`、`CTHIDRpA.dll` |
+| E009 | 2015 驱动包与 2020 PCFW 固件资源差异 | observation | `artifacts/workflow/updatefw/.rsrc/RCDATA` |
+
+## 13. 深度分析补充（2026-11-09）
+
+**完成度**：静态层面完成度较高；动态与真机验证为 0。准确说法是“升级器与主机参数路径基本查清、固件完成容器与架构识别，端到端解释和根因定位未完成”，不能回答“逆向完了”。
+
+**升级器**：
+
+- 已定位 `CFirmwareUpgradeU1` 的 `InitMCUData`、`SetActiveMCU`、`GetMCUType`、`LoadEmbeddedImage`（0x429e00 附近）、`FirmwareUpgradeWriteMalcolm`、`EndFirmwareUpgradeMalcolm` 等路径；Malcolm 的擦除/写入/校验/重试与 65 字节 HID 报文已从反汇编推断。
+- 2020 PCFW 与 2015 驱动包的固件资源是不同构建：MALCOLM_SBX 314,457 vs 314,366 B；GILROY 214,744 vs 211,408 B；PIC32 649,347 vs 605,635 B；BC08 1,555,028 vs 1,561,044 B。任何固件结论都要标注来源构建。
+- `MALCOLM_SBX` 在运行时是否被 `CFirmwareUpgradeU1` 选中，尚未找到 `[U1+4]` 选择标志的静态写入点；2015 版 `A_SBX→MALCOLM_SBX` 日志分支只是支持性证据。
+
+**固件镜像**：
+
+- `MALCOLM_SBX`：14 字节私有头 + 83 字节 U1 版本串 + 32 位对齐数据（inferred：DSP 字流/微码，不是已证实的指令集）+ 两段 `A1A2A3A4` 哨兵 + `BAADC0DE` + 0x4B528 起 256 项 IEEE-754 LE 浮点表 + 0x4B432 起 20 条 6 字节 thunk + 0x4B96E 起 8051 字节。8051 的加载基址/分段与主体 ISA 仍未确定。
+- `PIC32`：Intel HEX 解码为 MIPS32 little-endian，主段 0x1D0060FC–0x1D03C223，DEVCFG @0x1FC02FF0；含 `Sound Blaster X7`、`iAP2`、`iPod`、`Attached - Host Mode` 等字符串，以及 VID 041E/PID 323A 的 USB 设备描述符。不是字面量“USB host”。
+- `BC08`：CSR DFU2 容器，0x400 头、0x4C8 起 `CSRbcfw1`（ADK3.0 DFU / BlueCore7 为推断），未压缩未加密。
+- `GILROY`：熵 7.9956，8 字节对齐重复块；推断为 8 字节块密码 ECB，算法与密钥未知。
+
+**主机侧链路**：
+
+- `SndCrUSB`（实际为 `KsMalcCtl`）→ `CTHIDRpA` → `CTHID` → `HID.DLL`；SBX7/U1 的 VID/PID 为 `041E/323A`。
+- `SndCrUSB.dll` 0x465ed2 附近参数表可观察到 feature `0x10000100`、param `0x1a`、type Bool、size 4。
+- `CTHIDRpA.dll` 表项可观察到 `26 01 96 3A 92`（index 145）与 `26 01 96 39 91`（index 144）；名称指针指向 `ParamType_MasterMute` / `ParamType_MasterVolume`。因此 **param 26 → SCP 145/0x963A 是 inferred**，不是直接观察；尚未抓包确认运行时实际发出该 HID 命令。
+- 控制面板的 `SoundCoreObject.InitializeSoundCore` 先 `BindHardware(endpointId)` 再 `GetContext`；driverless U1 的 `ProductInfo` 返回 CLSID `495E4C24-85ED-4f19-885E-C2D01D7EA26C`，而 interop 类 `CtHdaMgrClass` 标注的是 `7BFF1F7F-1D65-49A0-AE26-7903C41BC5B3`。工具必须按实际注册选择 CLSID 并绑定端点。
+
+**工具状态**：
+
+- `tools/Sbx7MuteSwitch` 已修正为：默认 U1 CLSID `495E4C24…`、失败回退 `7BFF1F7F…`、`BindHardware(endpointId)`、NAudio 自动查找 “Sound Blaster X7” 渲染端点、`--probe` 只读检查、`--hold-ms` 前后各 1 秒、`finally` 恢复静音。
+- 已用厂商 `Interop.CtSndCr.dll` 重新编译通过（0 warnings / 0 errors），但**仍未在 Windows + 真机运行**；`--probe` 是第一步。
+
+**新增未知**：
+
+- 爆音根因：DSP/解码重配置、主机/设备路径不同步、还是 DAC/功放/继电器下游瞬态。
+- SCP `MasterMute 0x963A` 实际静音哪些输出、在 DSP 链哪一级；模式切换是否复位 mute。
+- MALCOLM 8051 是否处理 SCP 0x26/0x963A、是否含 fade/ramp 状态机；主体 ISA/段表/加载基址。
+- `CFirmwareUpgradeU1` 的 `[U1+4]` 选择标志写入点；MALCOLM_SBX 运行时是否真被选中。
+- 2020 与 2015 两套固件资源差异对静态结论的影响范围。
+
+**下一步最小验证**：
+
+1. Windows 上先跑 `Sbx7MuteSwitch.exe --probe`，确认 COM 注册、端点绑定和 mute 参数可读。
+2. 低音量 A/B：不静音 / 设备静音 / Windows 端点静音 三种条件，分别切 `direct`、`stereo-direct`、`spdif-passthrough`、`sbxmaster`；记录爆音在切换沿还是恢复沿。
+3. 用 USBPcap/HID ETW 抓模式切换与静音报告，确认 `26 01 96 3A 92` 是否出现、切换后 mute 是否被复位。
+4. 静态并行：用 8051 反汇编 MALCOLM 0x4B96E 起代码，搜索 SCP 0x26/0x963A 与 fade/mute 状态机。

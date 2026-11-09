@@ -30,13 +30,33 @@
   - 下一步探针：在控制面板确认 UI 状态，并分别测试三种模式
   - 证据：`report.md` 第 4 节
 - [ ] U004 固件是否已有模式切换静音/渐变
-  - 为什么未知：尚未反编译 `MALCOLM_SBX_RCDATA`，也未抓取模式切换时的 HID 命令
-  - 下一步探针：Ghidra/rizin 分析固件；或 Windows USBPcap 抓 HID 报告
-  - 证据：尚无
+  - 为什么未知：已完成 MALCOLM 头部/浮点表/8051 尾部结构识别，但尚未反汇编到 SCP 0x963A/0x26 或 fade/mute 状态机
+  - 下一步探针：用 8051 反汇编 MALCOLM 0x4B96E 起代码；或 Windows USBPcap 抓 HID 报告
+  - 证据：`report.md` 第 13 节；`artifacts/pcfw/.rsrc/RCDATA/MALCOLM_SBX_RCDATA`
 - [ ] U005 `GILROY_RCDATA` 与 `MALCOLM_SBX_RCDATA` 的设备映射
   - 为什么未知：升级器支持多个 MCU/产品，资源名与设备型号的对应关系未确认
   - 下一步探针：分析 `CFirmwareUpgradeU1::GetMCUType` 与资源选择分支
   - 证据：PCFW 字符串与 `.rsrc` 清单
+- [ ] U006 爆音根因
+  - 为什么未知：没有 Windows 真机 A/B、HID 抓包或音频测量
+  - 下一步探针：按 `report.md` 第 13 节的三步验证
+  - 证据：`report.md` 第 5、13 节
+- [ ] U007 SCP `MasterMute 0x963A` 的实际作用面
+  - 为什么未知：param 26 → 145/0x963A 是 inferred；未观察到运行时 HID 命令
+  - 下一步探针：USBPcap/HID ETW 抓 `26 01 96 3A 92` 并确认静音哪些输出
+  - 证据：`CTHIDRpA.dll` 表项；`SndCrUSB.dll` 参数表
+- [ ] U008 MALCOLM 主体 ISA、段表与 8051 加载基址
+  - 为什么未知：32 位对齐数据更像 DSP 字流，但无符号/标签；8051 LCALL/LJMP 跨约 64KB，基址不唯一
+  - 下一步探针：8051 反汇编 + 段表/加载器分析
+  - 证据：`report.md` 第 13 节
+- [ ] U009 `[CFirmwareUpgradeU1+4]` 选择标志与 MALCOLM_SBX 运行时选中
+  - 为什么未知：未找到静态写入点；2015 版 A_SBX→MALCOLM_SBX 日志分支只是支持性证据
+  - 下一步探针：反编译 `LoadEmbeddedImage`/`SetActiveMCU` 的调用者与命令行路径
+  - 证据：PCFW 反汇编；`artifacts/workflow/`
+- [ ] U010 2020 与 2015 两套固件资源差异的影响范围
+  - 为什么未知：两套资源大小与哈希不同；结论必须按构建标注
+  - 下一步探针：分别分析两套 MALCOLM/GILROY/PIC32/BC08，比较版本串与代码差异
+  - 证据：`artifacts/workflow/updatefw/.rsrc/RCDATA`
 
 ## 已解决
 

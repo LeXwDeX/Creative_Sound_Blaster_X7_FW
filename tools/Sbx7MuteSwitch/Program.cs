@@ -1,19 +1,25 @@
 using System;
 using System.Threading;
 using CTSoundCore;
+using NAudio.CoreAudioApi;
 
 namespace Sbx7MuteSwitch
 {
     internal static class Program
     {
         private const int DefaultHoldMs = 1000;
+        private const string DefaultClsid = "495E4C24-85ED-4f19-885E-C2D01D7EA26C";
+        private const string LegacyClsid = "7BFF1F7F-1D65-49A0-AE26-7903C41BC5B3";
 
         private static int Main(string[] args)
         {
             string mode = null;
             string value = null;
+            string endpointId = null;
+            string clsid = null;
             int holdMs = DefaultHoldMs;
             bool dryRun = false;
+            bool probeOnly = false;
             bool restoreMute = true;
 
             for (int i = 0; i < args.Length; i++)
@@ -26,6 +32,12 @@ namespace Sbx7MuteSwitch
                     case "--value":
                         value = RequireValue(args, ref i);
                         break;
+                    case "--endpoint-id":
+                        endpointId = RequireValue(args, ref i);
+                        break;
+                    case "--clsid":
+                        clsid = RequireValue(args, ref i);
+                        break;
                     case "--hold-ms":
                         holdMs = ParseHold(RequireValue(args, ref i));
                         if (holdMs < 0)
@@ -36,6 +48,9 @@ namespace Sbx7MuteSwitch
                         break;
                     case "--dry-run":
                         dryRun = true;
+                        break;
+                    case "--probe":
+                        probeOnly = true;
                         break;
                     case "--no-restore":
                         restoreMute = false;
@@ -51,20 +66,20 @@ namespace Sbx7MuteSwitch
                 }
             }
 
-            if (mode == null || value == null)
+            if (!probeOnly && (mode == null || value == null))
             {
                 PrintHelp();
                 return 2;
             }
 
-            bool enable;
-            if (!TryParseOnOff(value, out enable))
+            bool enable = true;
+            if (!probeOnly && !TryParseOnOff(value, out enable))
             {
                 Console.Error.WriteLine("--value must be on or off.");
                 return 2;
             }
 
-            if (!IsKnownMode(mode))
+            if (!probeOnly && !IsKnownMode(mode))
             {
                 Console.Error.WriteLine("Unknown mode: " + mode);
                 PrintHelp();
@@ -73,13 +88,24 @@ namespace Sbx7MuteSwitch
 
             if (dryRun)
             {
-                PrintPlan(mode, enable, holdMs, restoreMute);
+                PrintPlan(mode, enable, holdMs, restoreMute, endpointId, clsid ?? DefaultClsid);
                 return 0;
             }
 
+            bool clsidWasExplicit = clsid != null;
+            string selectedClsid = clsid ?? DefaultClsid;
+
             try
             {
-                ISoundCore core = new CtHdaMgrClass();
+                if (string.IsNullOrWhiteSpace(endpointId))
+                {
+                    endpointId = FindSbX7EndpointId();
+                    Console.WriteLine("Endpoint: " + endpointId);
+                }
+
+                ISoundCore core = CreateSoundCore(selectedClsid, clsidWasExplicit);
+                BindHardware(core, endpointId);
+
                 _etContext context;
                 core.GetContext(out context);
                 if (context == _etContext.eContext_Invalid)
@@ -90,8 +116,14 @@ namespace Sbx7MuteSwitch
                 Console.WriteLine("Context: " + context);
                 bool initialMute = GetMute(core, context);
                 Console.WriteLine("Initial mute: " + initialMute);
-                Console.WriteLine("Muting, waiting " + holdMs + " ms...");
 
+                if (probeOnly)
+                {
+                    Console.WriteLine("Probe succeeded; no parameter was changed.");
+                    return 0;
+                }
+
+                Console.WriteLine("Muting, waiting " + holdMs + " ms...");
                 bool muted = false;
                 try
                 {
@@ -122,6 +154,86 @@ namespace Sbx7MuteSwitch
             }
         }
 
+        private static ISoundCore CreateSoundCore(string clsidText, bool explicitClsid)
+        {
+            try
+            {
+                return CreateSoundCore(clsidText);
+            }
+            catch (Exception first)
+            {
+                if (explicitClsid || string.Equals(clsidText, LegacyClsid, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw;
+                }
+
+                Console.Error.WriteLine("CLSID " + clsidText + " failed: " + first.Message);
+                Console.Error.WriteLine("Trying legacy CLSID " + LegacyClsid + "...");
+                return CreateSoundCore(LegacyClsid);
+            }
+        }
+
+        private static ISoundCore CreateSoundCore(string clsidText)
+        {
+            Guid clsid;
+            if (!Guid.TryParse(clsidText, out clsid))
+            {
+                throw new ArgumentException("Invalid CLSID: " + clsidText);
+            }
+
+            Type type = Type.GetTypeFromCLSID(clsid);
+            object instance = Activator.CreateInstance(type);
+            if (instance == null)
+            {
+                throw new InvalidOperationException("COM activation returned null for " + clsidText);
+            }
+
+            return (ISoundCore)instance;
+        }
+
+        private static void BindHardware(ISoundCore core, string endpointId)
+        {
+            if (string.IsNullOrWhiteSpace(endpointId))
+            {
+                throw new ArgumentException("An audio endpoint ID is required.");
+            }
+            if (endpointId.Length >= 260)
+            {
+                throw new ArgumentException("The endpoint ID is longer than the supported 259 characters.");
+            }
+
+            var info = default(_stHardwareInfo);
+            info.infoType = _etHardwareInfoType.eHardwareInfoType_EndpointId;
+            info.info.endpointId = new ushort[260];
+
+            char[] characters = endpointId.ToCharArray();
+            Buffer.BlockCopy(characters, 0, info.info.endpointId, 0, Buffer.ByteLength(characters));
+            core.BindHardware(ref info);
+        }
+
+        private static string FindSbX7EndpointId()
+        {
+            using (var enumerator = new MMDeviceEnumerator())
+            {
+                var devices = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                foreach (var device in devices)
+                {
+                    if (device.FriendlyName.IndexOf("Sound Blaster X7", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return device.ID;
+                    }
+                }
+
+                Console.Error.WriteLine("Active render endpoints:");
+                foreach (var device in devices)
+                {
+                    Console.Error.WriteLine("  " + device.FriendlyName + " -> " + device.ID);
+                }
+            }
+
+            throw new InvalidOperationException("No active 'Sound Blaster X7' render endpoint found; pass --endpoint-id.");
+        }
+
         private static void ApplyMode(ISoundCore core, _etContext context, string mode, bool enable)
         {
             switch (mode)
@@ -134,6 +246,11 @@ namespace Sbx7MuteSwitch
                 case "stereo-direct":
                     SetProcessingDword(core, context,
                         _etParamProcessingControl.eParamProcessingControl_StereoDirectMode,
+                        enable ? 1u : 0u);
+                    break;
+                case "spdif-passthrough":
+                    SetProcessingDword(core, context,
+                        _etParamProcessingControl.eParamProcessingControl_SPDIFInPassThrough,
                         enable ? 1u : 0u);
                     break;
                 case "sbxmaster":
@@ -259,16 +376,20 @@ namespace Sbx7MuteSwitch
 
         private static bool IsKnownMode(string mode)
         {
-            return mode == "direct" || mode == "stereo-direct" || mode == "sbxmaster";
+            return mode == "direct" || mode == "stereo-direct" || mode == "sbxmaster" || mode == "spdif-passthrough";
         }
 
-        private static void PrintPlan(string mode, bool enable, int holdMs, bool restoreMute)
+        private static void PrintPlan(string mode, bool enable, int holdMs, bool restoreMute,
+            string endpointId, string clsid)
         {
             Console.WriteLine("Dry run; no COM calls.");
+            Console.WriteLine("CLSID: " + clsid);
+            Console.WriteLine("Endpoint: " + (string.IsNullOrWhiteSpace(endpointId) ? "<auto-detect Sound Blaster X7>" : endpointId));
             Console.WriteLine("Sequence: read mute -> mute on -> wait " + holdMs + " ms -> set " + mode + " " + (enable ? "on" : "off") + " -> wait " + holdMs + " ms -> " + (restoreMute ? "restore previous mute" : "leave muted"));
             Console.WriteLine("Mute parameter: feature=0x" + ((int)_etFeature.eFeature_Effects_SpeakerCalibrator).ToString("X8") + " param=" + (int)_etParamSpeakerCalibrator.eParamSpeakerCalibrator_Mute);
             Console.WriteLine("Direct mode: feature=0x" + ((int)_etFeature.eFeature_System_ProcessingControl).ToString("X8") + " param=" + (int)_etParamProcessingControl.eParamProcessingControl_DirectMode);
             Console.WriteLine("Stereo direct mode: feature=0x" + ((int)_etFeature.eFeature_System_ProcessingControl).ToString("X8") + " param=" + (int)_etParamProcessingControl.eParamProcessingControl_StereoDirectMode);
+            Console.WriteLine("SPDIF in passthrough: feature=0x" + ((int)_etFeature.eFeature_System_ProcessingControl).ToString("X8") + " param=" + (int)_etParamProcessingControl.eParamProcessingControl_SPDIFInPassThrough);
             Console.WriteLine("SBX master: feature=0x" + ((int)_etFeature.eFeature_EfxMasterControl).ToString("X8") + " param=" + (int)_etParamEfxMasterControl.eParamEfxMasterControl_SBXMasterOnOff);
         }
 
@@ -277,13 +398,18 @@ namespace Sbx7MuteSwitch
             Console.WriteLine("Sbx7MuteSwitch - mute the Sound Blaster X7 around a mode switch.");
             Console.WriteLine();
             Console.WriteLine("Usage:");
+            Console.WriteLine("  Sbx7MuteSwitch.exe --probe");
             Console.WriteLine("  Sbx7MuteSwitch.exe --mode direct --value off [--hold-ms 1000]");
             Console.WriteLine("  Sbx7MuteSwitch.exe --mode stereo-direct --value on");
             Console.WriteLine("  Sbx7MuteSwitch.exe --mode sbxmaster --value off");
+            Console.WriteLine("  Sbx7MuteSwitch.exe --mode spdif-passthrough --value off");
             Console.WriteLine();
             Console.WriteLine("Options:");
-            Console.WriteLine("  --mode direct|stereo-direct|sbxmaster");
+            Console.WriteLine("  --probe            Bind to the device and read the current mute value only.");
+            Console.WriteLine("  --mode direct|stereo-direct|spdif-passthrough|sbxmaster");
             Console.WriteLine("  --value on|off");
+            Console.WriteLine("  --endpoint-id ID   Audio endpoint ID; omitted = auto-detect the X7 render endpoint.");
+            Console.WriteLine("  --clsid GUID       SoundCore CLSID; default 495E4C24-85ED-4f19-885E-C2D01D7EA26C.");
             Console.WriteLine("  --hold-ms N        Wait N ms after muting and after the switch (default 1000).");
             Console.WriteLine("  --dry-run          Print the parameter plan without calling COM.");
             Console.WriteLine("  --no-restore       Leave the device muted after the switch.");

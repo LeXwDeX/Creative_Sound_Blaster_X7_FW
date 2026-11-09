@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <Reference Include="Interop.CtSndCr">
       <HintPath>$(InteropCtSndCrPath)</HintPath>
       <Private>true</Private>

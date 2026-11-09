@@ -1,8 +1,9 @@
 # Sbx7MuteSwitch
 
-Windows-side helper for the SBX7 mode-switch pop. It mutes the device through the
-installed Creative control panel COM server, waits, applies a Direct Mode or SBX
-Master change, waits again, then restores the previous mute state.
+Windows-side helper for the SBX7 mode-switch pop. It binds to the installed
+Creative control panel COM server, mutes the device through the
+`SpeakerCalibrator_Mute` parameter, applies a Direct Mode / SBX Master change,
+then restores the previous mute state.
 
 It does **not** modify firmware, install a driver or flash the device.
 
@@ -11,9 +12,7 @@ It does **not** modify firmware, install a driver or flash the device.
 - Windows with the Sound Blaster X7 driver and control panel installed.
 - The installed `Interop.CtSndCr.dll` (normally under the control panel folder).
 - .NET Framework 4.7.2 or newer; .NET SDK to build.
-
-The control panel's COM server must be registered by the normal driver install.
-This tool uses the same `CTSoundCore.CtHdaMgrClass` interface as the control panel.
+- NAudio (restored from NuGet) for render-endpoint discovery.
 
 ## Build
 
@@ -32,17 +31,27 @@ dotnet build -c Release -p:InteropCtSndCrPath="C:\...\Interop.CtSndCr.dll"
 
 The output is `bin\Release\net472\Sbx7MuteSwitch.exe` (32-bit).
 
-## Use
+## First: probe only
 
-Check the parameter plan first:
+Do not start with a mode switch. Bind and read the current mute value first:
+
+```powershell
+.\Sbx7MuteSwitch.exe --probe
+```
+
+If auto-detection cannot find the X7, pass the endpoint ID explicitly:
+
+```powershell
+.\Sbx7MuteSwitch.exe --probe --endpoint-id "{0.0.0.00000000}.{...}"
+```
+
+The tool tries the U1 CLSID `495E4C24-85ED-4f19-885E-C2D01D7EA26C` first, then
+the legacy `7BFF1F7F-1D65-49A0-AE26-7903C41BC5B3`. Override with `--clsid`.
+
+## Mode switch
 
 ```powershell
 .\Sbx7MuteSwitch.exe --mode direct --value off --dry-run
-```
-
-Then run the switch with a one-second mute on each side:
-
-```powershell
 .\Sbx7MuteSwitch.exe --mode direct --value off --hold-ms 1000
 ```
 
@@ -50,34 +59,48 @@ Other modes:
 
 ```powershell
 .\Sbx7MuteSwitch.exe --mode stereo-direct --value on
+.\Sbx7MuteSwitch.exe --mode spdif-passthrough --value off
 .\Sbx7MuteSwitch.exe --mode sbxmaster --value off
 ```
 
 Options:
 
+- `--probe`: bind, read context and mute value, change nothing.
+- `--mode direct|stereo-direct|spdif-passthrough|sbxmaster`
+- `--value on|off`
+- `--endpoint-id ID`: omit to auto-detect an active render endpoint named
+  "Sound Blaster X7".
+- `--clsid GUID`: SoundCore CLSID; default is the U1 CLSID above.
 - `--hold-ms N`: wait N ms after muting and after the switch (default 1000).
-- `--dry-run`: print the feature/parameter IDs without calling COM.
+- `--dry-run`: print the parameter plan without calling COM.
 - `--no-restore`: leave the device muted after the switch.
 
-The tool reads the current mute value before changing anything and restores it in a
-`finally` block, so a failed mode change does not leave the device muted.
+The tool reads the current mute value before changing anything and restores it in
+a `finally` block, so a failed mode change does not leave the device muted.
 
 ## What it changes
 
 | Action | Feature | Parameter |
 |---|---|---|
-| Mute | `eFeature_Effects_SpeakerCalibrator` (`0x10000080`) | `eParamSpeakerCalibrator_Mute` (26) |
+| Mute | `eFeature_Effects_SpeakerCalibrator` (`0x10000100`) | `eParamSpeakerCalibrator_Mute` (26) |
 | Direct Mode | `eFeature_System_ProcessingControl` (`0x01000002`) | `eParamProcessingControl_DirectMode` (7) |
 | Stereo Direct Mode | `eFeature_System_ProcessingControl` (`0x01000002`) | `eParamProcessingControl_StereoDirectMode` (8) |
+| S/PDIF In Passthrough | `eFeature_System_ProcessingControl` (`0x01000002`) | `eParamProcessingControl_SPDIFInPassThrough` (9) |
 | SBX Master | `eFeature_EfxMasterControl` (`0x60000001`) | `eParamEfxMasterControl_SBXMasterOnOff` (7) |
 
 The IDs come from the control panel's `Interop.CtSndCr.dll` and `SBX7.exe` metadata.
+`0x10000080` is `SpeakerEnhancement`, not `SpeakerCalibrator`.
 
 ## Limits
 
-- Not verified on a real SBX7 here; the analysis host is macOS. Test on the Windows
-  machine with the device, at low amplifier volume first.
-- If the pop is produced after the device's mute point (DSP/DAC/firmware), the
-  host-side mute may not remove it. That result would point to firmware or DSP
+- **Not verified on a real SBX7.** The analysis host is macOS; the COM calls have
+  not been exercised. Start with `--probe`, then a low-volume A/B test.
+- The path from `SpeakerCalibrator_Mute` (param 26) to the Malcolm SCP
+  `ParamType_MasterMute` (145 / address `0x963A`) is inferred from the
+  `CTHIDRpA.dll` table and the control panel's miscellaneous-command path; it has
+  not been observed on the wire. The tool's mute may not silence the same output
+  or the same DSP stage as the pop.
+- If the pop is produced after the device's mute point (DSP/DAC/amplifier/relay),
+  the host-side mute may not remove it. That result would point to firmware or DSP
   behavior and is recorded as an unknown in the project report.
 - The tool does not bypass any protection, modify firmware or change the driver.
